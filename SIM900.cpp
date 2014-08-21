@@ -1,5 +1,7 @@
 #include "SIM900.h"
+#if defined MEGA || defined UNO
 #include "Streaming.h"
+#endif
 
 #define _GSM_CONNECTION_TOUT_ 5
 #define _TCP_CONNECTION_TOUT_ 20
@@ -32,8 +34,11 @@ char SIMCOM900::forceON()
 	 char ret_val=0;
      char *p_char;
      char *p_char1;
-
+#if defined MEGA || defined UNO
      SimpleWriteln(F("AT+CREG?"));
+#else
+     SimpleWriteln("AT+CREG?");
+#endif
      WaitResp(5000, 100, str_ok);
      if(IsStringReceived(str_ok)) {
           ret_val=1;
@@ -68,7 +73,11 @@ int SIMCOM900::configandwait(char* pin)
      // Try 10 times to register in the network. Note this can take some time!
      for(int i=0; i<10; i++) {
           //Ask for register status to GPRS network.
+#if defined MEGA || defined UNO
           SimpleWriteln(F("AT+CGREG?"));
+#else
+          SimpleWriteln("AT+CGREG?");
+#endif
 
           //Se espera la unsolicited response de registered to network.
           while(gsm.WaitResp(5000, 50, "+CGREG: 0,")!=RX_FINISHED_STR_RECV)
@@ -79,10 +88,18 @@ int SIMCOM900::configandwait(char* pin)
                if((connCode==1)||(connCode==5)) {
                     setStatus(READY);
 
+#if defined MEGA || defined UNO
                     SimpleWriteln(F("AT+CMGF=1")); //SMS text mode.
+#else
+                    SimpleWriteln("AT+CMGF=1"); //SMS text mode.
+#endif
                     delay(200);
                     // Buah, we should take this to readCall()
+#if defined MEGA || defined UNO
                     SimpleWriteln(F("AT+CLIP=1")); //SMS text mode.
+#else
+                    SimpleWriteln("AT+CLIP=1"); //SMS text mode.
+#endif
                     delay(200);
                     //_cell << "AT+QIDEACT" <<  _DEC(cr) << endl; //To make sure not pending connection.
                     //delay(1000);
@@ -107,7 +124,7 @@ int SIMCOM900::read(char* result, int resultlength)
 {
      char temp;
      int i=0;
-
+#if defined MEGA || defined UNO
 #ifdef DEBUG_ON
      Serial.print(F("Starting read..\nWaiting for Data.."));
 #endif
@@ -137,6 +154,17 @@ int SIMCOM900::read(char* result, int resultlength)
 #ifdef DEBUG_ON
      Serial.println(F("\nDone.."));
 #endif
+#endif
+
+#ifdef WINDOWS_GALILEO
+     for (i = 0; i<resultlength; i++){
+         temp = gsm.read();
+         if (temp>0){
+             printf("%c", temp);
+             result[i] = temp;
+         }
+     }
+#endif
      return i;
 }
 
@@ -147,8 +175,13 @@ int SIMCOM900::readCellData(int &mcc, int &mnc, long &lac, long &cellid)
 
      //_tf.setTimeout(_GSM_DATA_TOUT_);
      //_cell.flush();
+#if defined MEGA || defined UNO
      SimpleWriteln(F("AT+QENG=1,0"));
      SimpleWriteln(F("AT+QENG?"));
+#else
+     SimpleWriteln("AT+QENG=1,0");
+     SimpleWriteln("AT+QENG?");
+#endif
      if(gsm.WaitResp(5000, 50, "+QENG")!=RX_FINISHED_STR_NOT_RECV)
           return 0;
 
@@ -164,18 +197,23 @@ int SIMCOM900::readCellData(int &mcc, int &mnc, long &lac, long &cellid)
      cellid=_cell.read();
 
      gsm.WaitResp(5000, 50, "+OK");
+#if defined MEGA || defined UNO
      SimpleWriteln(F("AT+QENG=1,0"));
+#else
+     SimpleWriteln("AT+QENG=1,0");
+#endif
      gsm.WaitResp(5000, 50, "+OK");
      return 1;
 }
 
 boolean SIMCOM900::readSMS(char* msg, int msglength, char* number, int nlength)
 {
-     Serial.println(F("This method is deprecated! Please use GetSMS in the SMS class."));
      long index;
+#if defined MEGA || defined UNO
      char *p_char;
      char *p_char1;
 
+     Serial.println(F("This method is deprecated! Please use GetSMS in the SMS class."));
      /*
      if (getStatus()==IDLE)
        return false;
@@ -248,13 +286,28 @@ boolean SIMCOM900::readSMS(char* msg, int msglength, char* number, int nlength)
           gsm.WaitResp(5000, 50, str_ok);
           return true;
      };
+#endif
+#ifdef WINDOWS_GALILEO
+     SimpleWriteln("AT+CMGL=\"REC UNREAD\",1");
+     if (gsm.WaitResp(5000, 50, "+CMGL") != RX_FINISHED_STR_RECV)
+     {
+         index = _cell.read();
+         _cell.getString("\",\"", "\"", number, nlength);
+         _cell.getString("\n", "\nOK", msg, msglength);
+
+         SimpleWrite("AT+CMGD=");
+         SimpleWriteln(index);
+         // Serial.print("VAL= ");
+         // Serial.println(index);
+         gsm.WaitResp(5000, 50, "OK");
+         return true;
+     };
+#endif
      return false;
 };
 
 boolean SIMCOM900::readCall(char* number, int nlength)
 {
-     int index;
-
      if (getStatus()==IDLE)
           return false;
 
@@ -265,10 +318,15 @@ boolean SIMCOM900::readCall(char* number, int nlength)
 #ifdef UNO
           _tf.getString("", "\"", number, nlength);
 #endif
-#ifdef MEGA
+#if defined MEGA || defined WINDOWS_GALILEO
           _cell.getString("", "\"", number, nlength);
 #endif
+
+#if defined UNO|| defined MEGA
           SimpleWriteln(F("ATH"));
+#else
+          SimpleWriteln("ATH");
+#endif
           delay(1000);
           //_cell.flush();
           return true;
@@ -282,12 +340,19 @@ boolean SIMCOM900::call(char* number, unsigned int milliseconds)
           return false;
 
      //_tf.setTimeout(_GSM_DATA_TOUT_);
-
+#if defined UNO|| defined MEGA
      SimpleWrite(F("ATD"));
      SimpleWrite(number);
      SimpleWriteln(F(";"));
      delay(milliseconds);
      SimpleWriteln(F("ATH"));
+#else
+     SimpleWrite("ATD");
+     SimpleWrite(number);
+     SimpleWriteln(";");
+     delay(milliseconds);
+     SimpleWriteln("ATH");
+#endif
 
      return true;
 
@@ -304,7 +369,11 @@ int SIMCOM900::setPIN(char *pin)
      //_cell.flush();
 
      //AT command to set PIN.
+#if defined UNO|| defined MEGA
      SimpleWrite(F("AT+CPIN="));
+#else
+     SimpleWrite("AT+CPIN=");
+#endif
      SimpleWriteln(pin);
 
      //Expect str_ok.
@@ -323,8 +392,11 @@ int SIMCOM900::changeNSIPmode(char mode)
      //    return 0;
 
      //_cell.flush();
-
+#if defined UNO|| defined MEGA
      SimpleWrite(F("AT+QIDNSIP="));
+#else
+     SimpleWrite("AT+QIDNSIP=");
+#endif
      SimpleWriteln(mode);
      if(gsm.WaitResp(5000, 50, str_ok)!=RX_FINISHED_STR_NOT_RECV) return 0;
      //if(!_tf.find(str_ok)) return 0;
@@ -343,13 +415,17 @@ int SIMCOM900::getCCI(char *cci)
      //_cell.flush();
 
      //AT command to get CCID.
+#if defined UNO|| defined MEGA
      SimpleWriteln(F("AT+QCCID"));
+#else
+     SimpleWriteln("AT+QCCID");
+#endif
 
      //Read response from modem
 #ifdef UNO
      _tf.getString("AT+QCCID\r\r\r\n","\r\n",cci, 21);
 #endif
-#ifdef MEGA
+#if defined MEGA || defined WINDOWS_GALILEO
      _cell.getString("AT+QCCID\r\r\r\n","\r\n",cci, 21);
 #endif
 
@@ -368,13 +444,17 @@ int SIMCOM900::getIMEI(char *imei)
      //_cell.flush();
 
      //AT command to get IMEI.
+#if defined UNO|| defined MEGA
      SimpleWriteln(F("AT+GSN"));
+#else
+     SimpleWriteln("AT+GSN");
+#endif
 
      //Read response from modem
 #ifdef UNO
      _tf.getString("\r\n","\r\n",imei, 16);
 #endif
-#ifdef MEGA
+#if defined MEGA || defined WINDOWS_GALILEO
      _cell.getString("\r\n","\r\n",imei, 16);
 #endif
 
@@ -401,7 +481,11 @@ void SIMCOM900::SimpleRead()
      if(_cell.available()>0) {
           datain=_cell.read();
           if(datain>0) {
+#if defined UNO || defined MEGA
                Serial.print(datain);
+#else
+               printf("%c", datain);
+#endif
           }
      }
 }
@@ -421,20 +505,24 @@ void SIMCOM900::SimpleWrite(int comm)
      _cell.print(comm);
 }
 
+#if defined MEGA || UNO
 void SIMCOM900::SimpleWrite(const __FlashStringHelper *pgmstr)
 {
      _cell.print(pgmstr);
 }
+#endif
 
 void SIMCOM900::SimpleWriteln(char *comm)
 {
      _cell.println(comm);
 }
 
+#if defined UNO|| defined MEGA
 void SIMCOM900::SimpleWriteln(const __FlashStringHelper *pgmstr)
 {
      _cell.println(pgmstr);
 }
+#endif
 
 void SIMCOM900::SimpleWriteln(char const *comm)
 {
@@ -452,7 +540,11 @@ void SIMCOM900::WhileSimpleRead()
      while(_cell.available()>0) {
           datain=_cell.read();
           if(datain>0) {
-               Serial.print(datain);
+#if defined UNO || defined MEGA
+              Serial.print(datain);
+#else
+              printf("%c", datain);
+#endif
           }
      }
 }
@@ -510,7 +602,11 @@ byte GSM::CheckRegistration(void)
 
      if (CLS_FREE != GetCommLineStatus()) return (REG_COMM_LINE_BUSY);
      SetCommLineStatus(CLS_ATCMD);
+#if defined UNO|| MEGA
      _cell.println(F("AT+CREG?"));
+#else
+     _cell.println("AT+CREG?");
+#endif
      // 5 sec. for initial comm tmout
      // 50 msec. for inter character timeout
      status = WaitResp(5000, 50);
@@ -787,7 +883,11 @@ char GSM::GetPhoneNumber(byte position, char *phone_number)
      phone_number[0] = 0; // phone number not found yet => empty string
 
      //send "AT+CPBR=XY" - where XY = position
+#if defined UNO|| MEGA
      _cell.print(F("AT+CPBR="));
+#else
+     _cell.print("AT+CPBR=");
+#endif
      _cell.print((int)position);
      _cell.print("\r");
 
@@ -816,7 +916,11 @@ char GSM::GetPhoneNumber(byte position, char *phone_number)
                     *p_char1 = 0; // end of string
                }
                // extract phone number string
+#ifdef WINDOWS_GALILEO
+               strcpy_s(phone_number, sizeof(phone_number), (char *)(p_char));
+#else
                strcpy(phone_number, (char *)(p_char));
+#endif
                // output value = we have found out phone number string
                ret_val = 1;
           }
@@ -862,11 +966,19 @@ char GSM::WritePhoneNumber(byte position, char *phone_number)
      //send: AT+CPBW=XY,"00420123456789"
      // where XY = position,
      //       "00420123456789" = phone number string
+#if defined UNO|| MEGA
      _cell.print(F("AT+CPBW="));
      _cell.print((int)position);
      _cell.print(F(",\""));
      _cell.print(phone_number);
      _cell.print(F("\"\r"));
+#else
+     _cell.print("AT+CPBW=");
+     _cell.print((int)position);
+     _cell.print(",\"");
+     _cell.print(phone_number);
+     _cell.print("\"\r");
+#endif
 
      // 5000 msec. for initial comm tmout
      // 50 msec. for inter character timeout
@@ -918,9 +1030,17 @@ char GSM::DelPhoneNumber(byte position)
 
      //send: AT+CPBW=XY
      // where XY = position
+#if defined UNO|| MEGA
      _cell.print(F("AT+CPBW="));
+#else
+     _cell.print("AT+CPBW=");
+#endif
      _cell.print((int)position);
+#if defined UNO|| MEGA
      _cell.print(F("\r"));
+#else
+     _cell.print("\r");
+#endif
 
      // 5000 msec. for initial comm tmout
      // 50 msec. for inter character timeout

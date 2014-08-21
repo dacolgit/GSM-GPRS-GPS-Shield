@@ -1,12 +1,17 @@
 #ifndef GSM_H
 #define GSM_H
 
-#define UNO
+//#define UNO
 //#define MEGA
+#define WINDOWS_GALILEO
 
-#include <SoftwareSerial.h>
+
 #include <inttypes.h>
+
+#if defined UNO || defined MEGA
+#include <SoftwareSerial.h>
 #include "WideTextFinder.h"
+#endif
 
 
 #define ctrlz 26 //Ascii character for ctr+z. End of a SMS.
@@ -20,7 +25,7 @@
 #define DEBUG_ON
 
 
-#ifdef MEGA
+#if defined MEGA || defined WINDOWS_GALILEO
 #include "HWSerial.h"
 #endif
 
@@ -158,7 +163,11 @@ enum getsms_ret_val_enum {
 
 class GSM {
 public:
-     enum GSM_st_e { ERROR, IDLE, READY, ATTACHED, TCPSERVERWAIT, TCPCONNECTEDSERVER, TCPCONNECTEDCLIENT };
+#ifdef WINDOWS_GALILEO
+     enum GSM_st_e { ERROR_GSM=0, IDLE, READY, ATTACHED, TCPSERVERWAIT, TCPCONNECTEDSERVER, TCPCONNECTEDCLIENT };
+#else
+    enum GSM_st_e { ERROR, IDLE, READY, ATTACHED, TCPSERVERWAIT, TCPCONNECTEDSERVER, TCPCONNECTEDCLIENT };
+#endif
      byte comm_buf[COMM_BUF_LEN+1];  // communication buffer +1 for 0x00 termination
      void InitParam (byte group);
 
@@ -183,7 +192,7 @@ private:
      char InitSMSMemory(void);
 
 protected:
-#ifdef MEGA
+#if defined MEGA || defined WINDOWS_GALILEO
      HWSerial _cell;
 #endif
 #ifdef UNO
@@ -219,10 +228,12 @@ public:
                             uint16_t start_comm_tmout, uint16_t max_interchar_tmout,
                             char const *response_string,
                             byte no_of_attempts);
+#if defined MEGA || defined UNO   
      char SendATCmdWaitResp(const __FlashStringHelper *AT_cmd_string,
                             uint16_t start_comm_tmout, uint16_t max_interchar_tmout,
                             char const *response_string,
                             byte no_of_attempts);
+#endif
      void Echo(byte state);
 
 

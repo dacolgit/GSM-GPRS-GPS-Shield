@@ -1,6 +1,8 @@
 #ifndef SIMCOM900_H
 #define SIMCOM900_H
+#if defined MEGA || defined UNO
 #include <SoftwareSerial.h>
+#endif
 #include "HWSerial.h"
 #include "GSM.h"
 class SIMCOM900 : public virtual GSM {
@@ -29,10 +31,14 @@ public:
      void SimpleWrite(char *comm);
      void SimpleWrite(char const *comm);
      void SimpleWrite(int comm);
+#if defined MEGA || defined UNO
      void SimpleWrite(const __FlashStringHelper *pgmstr);
+#endif
      void SimpleWriteln(char *comm);
      void SimpleWriteln(char const *comm);
+#if defined MEGA || defined UNO
      void SimpleWriteln(const __FlashStringHelper *pgmstr);
+#endif
      void SimpleWriteln(int comm);
 };
 

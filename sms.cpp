@@ -27,7 +27,11 @@ an example of usage:
 char SMSGSM::SendSMS(char *number_str, char *message_str)
 {
      if(strlen(message_str)>159)
+#if defined UNO|| defined MEGA
           Serial.println(F("Don't send message longer than 160 characters"));
+#else
+          printf("Don't send message longer than 160 characters");
+#endif
      char ret_val = -1;
      byte i;
      char end[2];
@@ -41,14 +45,32 @@ char SMSGSM::SendSMS(char *number_str, char *message_str)
      // try to send SMS 3 times in case there is some problem
      for (i = 0; i < 1; i++) {
           // send  AT+CMGS="number_str"
-
+#if defined UNO|| defined MEGA
           gsm.SimpleWrite(F("AT+CMGS=\""));
+#else
+          gsm.SimpleWrite("AT+CMGS=\"");
+#endif
           gsm.SimpleWrite(number_str);
           gsm.SimpleWriteln("\"");
 
-#ifdef DEBUG_ON
-          Serial.println("DEBUG:SMS TEST");
+#ifdef WINDOWS_GALILEO
+          delay(1000);
+
+          // simple implementation. It´s base on a simple and partial implementation of HardwareSerial
+          gsm.SimpleWrite(message_str);
+          gsm.SimpleWriteln(end);
+          ret_val = 1;
 #endif
+
+#ifdef DEBUG_ON
+#if defined UNO|| defined MEGA
+          Serial.println("DEBUG:SMS TEST");
+#else
+          printf("DEBUG:SMS TEST");
+#endif
+#endif
+
+#if defined UNO|| defined MEGA
           // 1000 msec. for initial comm tmout
           // 50 msec. for inter character timeout
           if (RX_FINISHED_STR_RECV == gsm.WaitResp(1000, 500, ">")) {
@@ -70,7 +92,9 @@ char SMSGSM::SendSMS(char *number_str, char *message_str)
                continue;
 
           }
+#endif
      }
+
 
      gsm.SetCommLineStatus(CLS_FREE);
      return (ret_val);
@@ -170,14 +194,26 @@ char SMSGSM::IsSMSPresent(byte required_status)
      ret_val = 0; // still not present
 
      switch (required_status) {
-     case SMS_UNREAD:
+     case SMS_UNREAD:    
+#if defined UNO|| defined MEGA
           gsm.SimpleWriteln(F("AT+CMGL=\"REC UNREAD\""));
+#else
+          gsm.SimpleWriteln("AT+CMGL=\"REC UNREAD\"");
+#endif
           break;
      case SMS_READ:
+#if defined UNO|| defined MEGA
           gsm.SimpleWriteln(F("AT+CMGL=\"REC READ\""));
+#else
+          gsm.SimpleWriteln("AT+CMGL=\"REC READ\"");
+#endif
           break;
      case SMS_ALL:
+#if defined UNO|| defined MEGA
           gsm.SimpleWriteln(F("AT+CMGL=\"ALL\""));
+#else
+          gsm.SimpleWriteln("AT+CMGL=\"ALL\"");
+#endif
           break;
      }
 
@@ -295,7 +331,11 @@ char SMSGSM::GetSMS(byte position, char *phone_number, char *SMS_text, byte max_
      ret_val = GETSMS_NO_SMS; // still no SMS
 
      //send "AT+CMGR=X" - where X = position
+#if defined UNO|| defined MEGA
      gsm.SimpleWrite(F("AT+CMGR="));
+#else
+     gsm.SimpleWrite("AT+CMGR=");
+#endif
      gsm.SimpleWriteln((int)position);
 
      // 5000 msec. for initial comm tmout
@@ -349,7 +389,11 @@ char SMSGSM::GetSMS(byte position, char *phone_number, char *SMS_text, byte max_
           p_char = strchr((char *)(p_char1),'"');
           if (p_char != NULL) {
                *p_char = 0; // end of string
+#ifdef WINDOWS_GALILEO
+               strcpy_s(phone_number, sizeof(phone_number), (char *)(p_char1));
+#else
                strcpy(phone_number, (char *)(p_char1));
+#endif
           }
 
 
@@ -380,7 +424,11 @@ char SMSGSM::GetSMS(byte position, char *phone_number, char *SMS_text, byte max_
                     // so copy whole SMS text
                     // from the beginning of the text(=p_char position)
                     // to the end of the string(= p_char1 position)
+#ifdef WINDOWS_GALILEO
+                    strcpy_s(SMS_text, sizeof(SMS_text), (char *)(p_char));
+#else
                     strcpy(SMS_text, (char *)(p_char));
+#endif
                } else {
                     // buffer SMS_text doesn't have enough place for copying all SMS text
                     // so cut SMS text to the (max_SMS_len-1)
@@ -532,7 +580,11 @@ char SMSGSM::DeleteSMS(byte position)
      ret_val = 0; // not deleted yet
 
      //send "AT+CMGD=XY" - where XY = position
+#if defined UNO|| defined MEGA
      gsm.SimpleWrite(F("AT+CMGD="));
+#else
+     gsm.SimpleWrite("AT+CMGD=");
+#endif
      gsm.SimpleWriteln((int)position);
 
 
