@@ -36,10 +36,11 @@ void loop()
 	char phoneNumber[] = { "+49151123456" };
     char smstext[] = { "Hi, This message was sent to you By Galileo" };
     int smsCounter = 0;
+	int maxSMSSent = 1;
 
     CustomLogging("Sending sms.\n");
 
-    if (smsCounter < 1)
+	if (smsCounter < maxSMSSent)
     {
         sms.SendSMS(phoneNumber, smstext);
         smsCounter++;
