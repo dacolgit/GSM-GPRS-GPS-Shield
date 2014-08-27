@@ -32,7 +32,8 @@ void setup()
 
 void loop()
 {
-    char phoneNumber[] = { "+4915144063780" };
+    // Add your phone number
+	char phoneNumber[] = { "+49151123456" };
     char smstext[] = { "Hi, This message was sent to you By Galileo" };
     int smsCounter = 0;
 
